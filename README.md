@@ -60,14 +60,17 @@ financial-index-tracker/
 └── venv/ # Environnement virtuel Python
 
 ## Installation et utilisation
+```bash
 
 ### 1. Cloner le projet
 
-git clone https://github.com/votre-utilisateur/financial-index-tracker.git
+git clone https://github.com/guilhembarroyer/financial-index-tracker.git
 cd financial-index-tracker
 
 ### 2. Configurer l'environnement Python
 
+poetry install
+#ou
 python -m venv venv
 source venv/bin/activate  # macOS/Linux
 venv\Scripts\activate     # Windows
@@ -75,3 +78,5 @@ pip install -r requirements.txt
 
 ### 3. Lancer l'application Streamlit
 streamlit run Source/interface_utilisateur.py (ex: streamlit run /Users/guilhembarroyer/Desktop/Projects/financial-index-tracker/Source/interface_utilisateur.py)
+
+```bash
