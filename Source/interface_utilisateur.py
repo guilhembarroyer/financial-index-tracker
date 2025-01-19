@@ -2,9 +2,14 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-from scipy.stats import linregressgti 
+from scipy.stats import linregress
+import plotly.express as px
 
 from engine_controller import Controller
+
+def create_pie_chart(data, column, title):
+        fig = px.pie(data, values="Weight", names=column, title=title)
+        return fig
 
 # Initialisation du Controller
 controller = Controller()
@@ -384,55 +389,70 @@ elif st.session_state.page == "indice":
 
 
 elif st.session_state.page == "visual": 
-    resultats_indice=st.session_state.results
-
-    resultats_indice['Rendements de l\'indice'] = resultats_indice['Values'].pct_change()
+    resultats_indice, composition_indice, rebalancing=st.session_state.results
     
-    performance_totale = (resultats_indice['Values'].iloc[-1] / resultats_indice['Values'].iloc[0]) - 1
+    resultats_indice['Rendements de l\'indice'] = resultats_indice['Indice normalisé'].pct_change()
+
+    # Interface utilisateur Streamlit
+    st.title("Composition de l'indice par année")
+
+    # Itération sur les années
+    for year, df in composition_indice.items():
+        st.subheader(f"Année {year}")
+        
+    # Graphiques
+        st.plotly_chart(create_pie_chart(df, "Name", f"Proportions par valeur ({year})"))
+        st.plotly_chart(create_pie_chart(df, "Country", f"Proportions par pays ({year})"))
+        st.plotly_chart(create_pie_chart(df, "Bics1", f"Proportions par secteur ({year})"))
+
+
+
+    performance_totale = (resultats_indice['Indice normalisé'].iloc[-1] / resultats_indice['Indice normalisé'].iloc[0]) - 1
     performance_annualisee = (1 + performance_totale) ** (365 / len(resultats_indice)) - 1
-    volatilite = resultats_indice['Index_Returns'].std() * np.sqrt(252)
-    max_drawdown = ((resultats_indice['Index'] / resultats_indice['Index'].cummax()) - 1).min()
+    volatilite = resultats_indice['Rendements de l\'indice'].std() * np.sqrt(252)
+    max_drawdown = ((resultats_indice['Indice normalisé'] / resultats_indice['Indice normalisé'].cummax()) - 1).min()
+    taux_sans_risque = st.number_input('Choisissez le taux sans risque pour le calcul du ratio de Sharpe:', min_value=0.0, max_value=0.1, value=0.02, step=0.001)
+    sharpe_ratio = (performance_annualisee - taux_sans_risque) / volatilite
+ 
+
+    # Résumé des indicateurs
+    indicateurs = pd.DataFrame({
+        'Indicateur': ['Performance Totale', 'Performance Annualisée', 'Volatilité', 'Max Drawdown', 'Sharpe Ratio'],
+        'Valeur': [performance_totale, performance_annualisee, volatilite, max_drawdown, sharpe_ratio]
+    })
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=resultats_indice.index, y=resultats_indice['Indice normalisé'], mode='lines', name='Index', line=dict(color='blue')))
 
     if "SPX" in resultats_indice.columns:
         resultats_indice['Rendement du SPX'] = resultats_indice['SPX'].pct_change()
-        beta, alpha, _, _, _ = linregress(resultats_indice['Rendement du SPX'].dropna(), resultats_indice['Rendements de l\'indice'].dropna())
-    elif "SXXP" in resultats_indice.columns:
-        resultats_indice['Rendement du SXXP'] = resultats_indice['SXXP'].pct_change()
+        betaSPX, alphaSPX, _, _, _ = linregress(resultats_indice['Rendement du SPX'].dropna(), resultats_indice['Rendements de l\'indice'].dropna())
+        fig.add_trace(go.Scatter(x=resultats_indice.index, y=resultats_indice['SPX'], mode='lines', name='SPX', line=dict(color='orange')))
+        indicateurs = pd.concat([indicateurs,pd.DataFrame({'Indicateur': ['Beta SPX'], 'Valeur': betaSPX})], ignore_index=True)
+        indicateurs = pd.concat([indicateurs, pd.DataFrame({'Indicateur': ['Alpha SPX'], 'Valeur': alphaSPX})], ignore_index=True)
 
-    st.title("Exemple de DataFrame avec Streamlit")
+
+    if "SXXP" in resultats_indice.columns:
+        resultats_indice['Rendement du SXXP'] = resultats_indice['SXXP'].pct_change()
+        betaSXXP, alphaSXXP, _, _, _ = linregress(resultats_indice['Rendement du SXXP'].dropna(), resultats_indice['Rendements de l\'indice'].dropna())
+        fig.add_trace(go.Scatter(x=resultats_indice.index, y=resultats_indice['SXXP'], mode='lines', name='SXXP', line=dict(color='orange')))
+
+        indicateurs = pd.concat([indicateurs,pd.DataFrame({'Indicateur': ['Beta SXXP'], 'Valeur': betaSXXP})], ignore_index=True)
+        indicateurs = pd.concat([indicateurs,pd.DataFrame({'Indicateur': ['Alpha SXXP'], 'Valeur': alphaSXXP})], ignore_index=True)
+
+    st.title("Résultats de la performance de votre indice")
     st.dataframe(resultats_indice)
 
+    fig.update_layout(title="Évolution des indices", xaxis_title="Date", yaxis_title="Valeur de l'indice")
+    st.markdown("### Visualisation de l'Indice")
+    st.markdown("""
+    Le graphique ci-dessous montre l'évolution de l'indice au fil du temps. 
+    Vous pouvez l'utiliser pour suivre la performance globale de votre indice.
+    """)
+    st.plotly_chart(fig, use_container_width=True)
 
+    st.table(indicateurs)
 
-# Beta et Alpha
-beta, alpha, _, _, _ = linregress(df['Benchmark_Returns'].dropna(), df['Index_Returns'].dropna())
+  
+    pass
 
-# Ratio de Sharpe
-taux_sans_risque = 0.02  # 2% par an
-sharpe_ratio = (performance_annualisee - taux_sans_risque) / volatilite
-
-# 3. Drawdown
-df['Drawdown'] = (df['Index'] / df['Index'].cummax()) - 1
-
-# 4. Visualisations
-# Courbe de l'indice et du benchmark
-fig = go.Figure()
-fig.add_trace(go.Scatter(x=df.index, y=df['Index'], mode='lines', name='Index', line=dict(color='blue')))
-fig.add_trace(go.Scatter(x=df.index, y=df['Benchmark'], mode='lines', name='Benchmark', line=dict(color='orange')))
-fig.update_layout(title="Évolution des indices", xaxis_title="Date", yaxis_title="Valeur de l'indice")
-
-# Courbe du Drawdown
-fig_drawdown = go.Figure()
-fig_drawdown.add_trace(go.Scatter(x=df.index, y=df['Drawdown'], mode='lines', name='Drawdown', line=dict(color='red')))
-fig_drawdown.update_layout(title="Max Drawdown", xaxis_title="Date", yaxis_title="Drawdown")
-
-# Résumé des indicateurs
-indicateurs = pd.DataFrame({
-    'Indicateur': ['Performance Totale', 'Performance Annualisée', 'Volatilité', 'Max Drawdown', 'Beta', 'Alpha', 'Sharpe Ratio'],
-    'Valeur': [performance_totale, performance_annualisee, volatilite, max_drawdown, beta, alpha, sharpe_ratio]
-})
-
-# Afficher les graphiques et les indicateurs
-print(indicateurs)
-fig.show()
-fig_drawdown.show()

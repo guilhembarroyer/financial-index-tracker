@@ -103,7 +103,7 @@ class Controller:
 
         final_index=Index(historical_data=data_df, tickers=tickers_index_list, index_size=index_size, index_choice=index_choice, selection_type=selection_type)
         
-        index_composition=final_index.allocate_values_in_index(rebalancing=rebalancing)
+        index_composition_init=final_index.allocate_values_in_index(rebalancing=rebalancing)
         
         
 
@@ -114,7 +114,7 @@ class Controller:
 
             if rebalancing=="Aucun":
 
-                index_composition=index_composition["all_period_long"]
+                index_composition=index_composition_init["all_period_long"]
                
                 tickers_index_list=index_composition["Ticker"].tolist()
                 
@@ -138,7 +138,7 @@ class Controller:
                 
                 index_df=pd.DataFrame({
                                         "Date": prices_data["Dates"][first_ticker],
-                                        "Values": indice_values,
+                                        f"Indice ({selected_currency})": indice_values,
                                     })
                 
                 if len(selected_benchmarks)>0 and "None" not in selected_benchmarks:
@@ -149,14 +149,14 @@ class Controller:
                         index_df[benchmark]=benchmarks_data[benchmark][benchmark]
                         index_df[benchmark]=(index_df[benchmark]/index_df[benchmark].iloc[0])*100
 
-                index_df["Values"]=(index_df["Values"]/index_df["Values"].iloc[0])*100
+                index_df["Indice normalisé"]=(index_df[f"Indice ({selected_currency})"]/index_df[f"Indice ({selected_currency})"].iloc[0])*100
 
                 
                 index_df.set_index("Date", inplace=True)
                 
                 print(index_df)
 
-                return index_df
+                return index_df, index_composition_init, rebalancing
                     
 
 
@@ -164,14 +164,77 @@ class Controller:
 
 
             elif rebalancing=="Rééquilibrage annuel":
-               for date in ["28-12-2018", "30-12-2019", "30-12-2020"]:
-                  prices_data, excel_tickers, no_data=self.get_historical_data(tickers_index_list, research_type="stock_prices")
+               
+                final_index_df = pd.DataFrame()
 
-        else:
+                start_date=pd.to_datetime("28-12-2018")
+                mid1_date=pd.to_datetime("30-12-2019")
+                mid2_date=pd.to_datetime("30-12-2020")
+                end_date=pd.to_datetime("30-12-2021")
+                
+                for year in [2018, 2019, 2020]:
+                
+                    index_composition=index_composition_init[f"{year}"]
+
+                    tickers_index_list=index_composition["Ticker"].tolist()
+                    
+                    prices_data, tickers, no_data=self.get_historical_data(tickers_index_list, research_type="stock_prices")
+                    
+                    prices = pd.DataFrame()
+                    weights = {}
+
+                    
+                    for ticker in tickers_index_list:
+                        prices[ticker]=prices_data["Prices"][ticker]
+                        weights[ticker]=index_composition[index_composition["Ticker"]==ticker]["Weight"].iloc[0] 
+                        
+
+                    
+                    indice_values = prices.apply(lambda x: sum(x[ticker] * weights[ticker] for ticker in prices.columns), axis=1)
+                    
+
+                    first_ticker=tickers_index_list[0]
+                    
+
+                    index_df=pd.DataFrame({
+                                            "Date": prices_data["Dates"][first_ticker],
+                                            "Values": indice_values,
+                                        })
+                    
+                    index_df['Date'] = pd.to_datetime(index_df['Date'])
+                    print(index_df)
+                    
+                    if year == 2018:
+                        filtered_df = index_df[(index_df['Date'] >= start_date) & (index_df['Date'] <= mid1_date)]
+                    elif year == 2019:
+                        filtered_df = index_df[(index_df['Date'] >= mid1_date) & (index_df['Date'] <= mid2_date)]
+                    elif year == 2020:
+                        filtered_df = index_df[(index_df['Date'] >= mid2_date) & (index_df['Date'] <= end_date)]
+                    
+                    filtered_df = filtered_df.rename(columns={"Values": f"Indice ({selected_currency})"})
+                    final_index_df = pd.concat([final_index_df, filtered_df], ignore_index=True)
+
+                    print('aaa', final_index_df)
+
+                final_index_df.set_index("Date", inplace=True)
+
+                if len(selected_benchmarks)>0 and "None" not in selected_benchmarks:
+
+                    benchmarks_data, tickers, no_data=self.get_historical_data(selected_benchmarks, research_type="benchmarks", )
+                    
+                    for benchmark in selected_benchmarks:
+                        index_df[benchmark]=benchmarks_data[benchmark][benchmark]
+                        index_df[benchmark]=(index_df[benchmark]/index_df[benchmark].iloc[0])*100
+
+                final_index_df["Indice normalisé"]=(final_index_df[f"Indice ({selected_currency})"]/final_index_df[f"Indice ({selected_currency})"].iloc[0])*100
+
+                print(final_index_df)
+                return final_index_df, index_composition_init, rebalancing             
+       
         
 
 
-            pass
+        pass
 
     
     def convert_filter_data(

@@ -176,7 +176,7 @@ def get_historical_data_from_excel(ticker, research_type, source_path, historica
 
                     px_data_results_df=pd.DataFrame(columns=["Dates", "Prices"])
                     start_date=pd.to_datetime("28-12-2018")
-                    end_date=pd.to_datetime("30-12-2020")
+                    end_date=pd.to_datetime("30-12-2021")
                     px_data_results_df["Dates"]=px_data_df[(px_data_df.iloc[:, 1] >= start_date) & (px_data_df.iloc[:, 1] <= end_date)].iloc[:, 1]
                     px_data_results_df["Prices"] = px_data_df[(px_data_df.iloc[:, 1] >= start_date) & (px_data_df.iloc[:, 1] <= end_date)][ticker]
                     px_data_results_df['Prices']=px_data_results_df['Prices'].fillna(method='ffill')
@@ -252,7 +252,7 @@ def get_historical_data_from_excel(ticker, research_type, source_path, historica
 
             currencies_df = pd.read_excel(source_path, sheet_name="Forex")
             start_date=pd.to_datetime("28-12-2018")
-            end_date=pd.to_datetime("30-12-2020")
+            end_date=pd.to_datetime("30-12-2021")
             forex_values_df["Dates"]=currencies_df[(currencies_df.iloc[:, 1] >= start_date) & (currencies_df.iloc[:, 1] <= end_date)].iloc[:, 1]
             forex_values_df["Values"] = currencies_df[(currencies_df.iloc[:, 1] >= start_date) & (currencies_df.iloc[:, 1] <= end_date)][ticker]
 
