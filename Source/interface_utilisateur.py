@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from datetime import datetime
+import plotly.graph_objects as go
+from scipy.stats import linregressgti 
 
 from engine_controller import Controller
 
@@ -13,6 +14,11 @@ source_path=controller.excel_path
 # Initialisation de la session state
 if "page" not in st.session_state:
     st.session_state.page = "data"
+
+
+if "controller" not in st.session_state:
+    st.session_state.controller = Controller() 
+controller = st.session_state.controller
 
 # Page de sélection de l'univers
 if st.session_state.page == "data":
@@ -34,6 +40,7 @@ if st.session_state.page == "data":
         except Exception as e:
         
             st.error(f"Erreur lors de la lecture du fichier : {e}") 
+
 
 
     st.title("Univers de l'Indice - Filtres Géographique et Sectoriel")
@@ -121,22 +128,36 @@ if st.session_state.page == "data":
     selected_tickers = st.multiselect("Sélectionnez les tickers constituant l'Univers final de votre Indice", univers_tickers_list, univers_tickers_filtered, key="tickers")
 
 
-
+    if len(selected_tickers)<5:
+        raise ValueError("Il n'y a pas assez de valeurs pour constituer un indice, il en faut au moins 5.")
     # Mettre à jour l'attribut `.tickers` du controller
     if st.button("Mettre à jour l'univers et passer à la création de l'indice"):
         try:
+
             controller.update_universe(selected_tickers)
-            st.success(f"Univers mis à jour! Vous pouvez créer des indices allant jusqu'à {len(selected_tickers)} valeurs.")
-            
+            st.success(f"Univers mis à jour! Vous pouvez créer des indices allant jusqu'à {len(controller.tickers)} valeurs.")
+
             st.session_state.page = "indice"
-            st.success("Cliquez de nouveau pour continuer.")
+            st.success(f"Cliquez de nouveau pour continuer.")
 
         except ValueError as e:
             st.error(f"Erreur : {e}")
 
+
+
 # Page de création de l'indice
 elif st.session_state.page == "indice":
-    st.title("Création de l'Indice")
+    if "tickers" not in st.session_state:
+        st.session_state.tickers = controller.tickers
+    if "losses" not in st.session_state:
+        st.session_state.losses = {}
+    if "no_data" not in st.session_state:
+        st.session_state.no_data = []
+
+    if "analyse_upload" not in st.session_state:
+        st.session_state.analyse_upload = False
+
+    st.title("Paramétrage de l'Indice")
     st.write("Bienvenue sur la page de création de l'indice !")
     
     index_type = st.selectbox(
@@ -146,19 +167,28 @@ elif st.session_state.page == "indice":
     st.write("Les indidices basés sur les cours historiques sont plus longs à calculer, ils sont ainsi limités à 30 valeurs contre 100 pour les autres.")
 
     if index_type == "Indice basé sur des critères qualitatifs":
-        max_value = 100
-        options_rebalancing = ["Aucun", "Rééquilibrage annuel", "Rééquilibrage continu"]
-        rebalancing_after_2020=False
-    elif index_type == "Indice basé sur les cours historiques":
-        max_value = 30
+        index_type="qualitative"
+        if len(controller.tickers)>=100:
+            max_value = 100
+        else:
+            max_value=len(controller.tickers)
         options_rebalancing = ["Aucun", "Rééquilibrage annuel"]
+       
+
+    elif index_type == "Indice basé sur les cours historiques":
+        index_type="historical_prices"
+        if len(controller.tickers)>=30:
+            max_value = 30
+        else:
+            max_value=len(controller.tickers)
+        options_rebalancing = ["Aucun", "Rééquilibrage annuel", "Rééquilibrage continu"]
         rebalancing_after_2020=True
-        
+
     index_size = st.number_input(
         "Nombre de valeurs dans l'indice :",
         min_value=5,
         max_value=max_value,
-        value=20,
+        value=max_value,
         step=1
     )
     
@@ -166,42 +196,243 @@ elif st.session_state.page == "indice":
     rebalancing=st.selectbox("Choisissez la fréquence de rééquilibrage :", options=options_rebalancing)
 
 
-    if rebalancing_after_2020:
-        last_datetime=datetime(2021, 12, 31)
+    
+
+    has_dividends = st.checkbox("Inclure les actions versant des divdendes?", value=True)
+
+    # Gestion des choix en fonction de l'état de `has_dividends`
+    if has_dividends:
+        st.write("Veuillez sélectionner les types de dividendes à inclure.")
+        
+        # Liste des options de types de dividendes
+        dividend_types = [
+            "Irréguliers",
+            "Annuels",
+            "Semestriels",
+            "Trimestriels"
+        ]
+        selected_dividends = st.multiselect(
+            "Types de dividendes",
+            options=dividend_types,
+            default=dividend_types
+        )
+        
+        # Afficher la sélection
+        if selected_dividends:
+            st.success(f"Types de dividendes sélectionnés : {', '.join(selected_dividends)}")
+        else:
+            st.warning("Veuillez sélectionner au moins un type de dividende.")
     else:
-        last_datetime=datetime(2020, 12, 31)
+        st.write("Aucun dividende ne sera inclus.")
+        selected_dividends=False
 
-    creation_date=st.date_input(
-    "Date de création de l'indice.",
-    value=datetime(2018, 1, 1),  # Valeur par défaut
-    min_value=datetime(2018, 1, 1),  # Date minimale
-    max_value=last_datetime  # Date maximale
-    )
 
-    end_tracking_date=st.date_input(
-    "Date de création de l'indice.",
-    value=datetime(2020, 12, 31),  # Valeur par défaut
-    min_value=creation_date,  # Date minimale
-    max_value=datetime(2022, 12, 31)  # Date maximale
-    )
-
-    if not rebalancing_after_2020:
-        st.write("Il n'y a pas de rebalancement possible après 2020, vous pouvez tracker des indices jusqu'en 2022 mais il s'agira d'un indice modifié en 2020 au maximum.")
-   
+        
     st.write("Analyse de l'adaptabilité des indices à vos critères")
 
+    
+    
+  
+    ticker_losses={'dividends': {},'Market Cap Index': {}, 'Growth Index(PB)': {} , 'Growth Index(PE)': {} , 'Value Index(PB)': {}, 'Value Index(PE)': {},'Dividend Yield Index':{}}
+    excel_tickers=[]
+    no_data=[]
 
-    analyse_upload=False
+    options_index=['Market Cap Index','Growth Index(PB)', 'Growth Index(PE)', 'Value Index(PB)', 'Value Index(PE)', 'Dividend Yield Index']   
 
+    index_choice=st.selectbox("Choix du type d'indice", options_index)
+    
+    st.write("Pensez à bien lancer l'analyse avant de poursuivre vers la création de l'indice!")
     if st.button("Analyse"):
         try:
-            results=controller.choose_index(index_type, index_size, rebalancing, creation_date, end_tracking_date)
-            st.success("Analyse terminée !")
-            analyse_upload=True
+            st.session_state.analyse_upload = False
+            ticker_losses, excel_tickers, no_data, *_=controller.choose_index(index_type=index_type,  dividend=selected_dividends)
+            st.session_state.tickers=excel_tickers
+            st.session_state.losses=ticker_losses
+            st.session_state.no_data=no_data
+            st.success(f"Analyse terminée !")
+            st.write(f"{ticker_losses}")
+            st.session_state.analyse_upload = True
+            
             
         
         except ValueError as e:
             st.error(f"Erreur : {e}")
+
+
+
+    if st.session_state.analyse_upload:
+   
+        excel_tickers=st.session_state.tickers
+        ticker_losses=st.session_state.losses
+        no_data=st.session_state.no_data
+        if len(no_data)>0:
+            st.write(f"Pas de données pour ces {len(no_data)} valeurs: {no_data}.")
+            if len(excel_tickers)-len(no_data)<index_size:
+                st.write("Pas assez de données pour constituer l'indice, diminuez la taille souhaitée de l'indice  ou élargissez l'univers de l'indice.")
+                st.write("Actualisez la page pour revenir sur la page de création de l'univers des valeurs")
+        
+        
+        year_with_issue=[]
+        for year in [2018, 2019, 2020]:
+            if year in ticker_losses['dividends']:
+                if len(excel_tickers)-(len(ticker_losses['dividends'][year])+len(no_data))<index_size:
+                    year_with_issue.append(year)
+        
+        if len(year_with_issue)>0:
+            st.write(f"Pas assez de valeurs correspondantes pour constituer l'indice dans les conditions sur les dividendes demandées en {year_with_issue}: diminuez la taille souhaitée de l'indice souhaité, changez la politique de dividendes, révisez la période de tracking ou élargissez l'univers de l'indice.")
+            st.write("Actualisez la page pour revenir sur la page de création de l'univers des valeurs")
+
+        else: 
+            
+            not_available_tickers=no_data
+            for year in [2018, 2019, 2020]:
+                available_tickers=len(excel_tickers)
+                if year in ticker_losses["dividends"]:
+                    not_available_tickers=not_available_tickers+ticker_losses["dividends"][year]
+                if year in ticker_losses[index_choice]:
+                    not_available_tickers=not_available_tickers+ticker_losses[index_choice][year]
+            not_available_tickers = list(set(not_available_tickers))
+            
+
+            if available_tickers-len(not_available_tickers)<index_size:
+                st.write(f"Pas assez de données/valeurs correspondantes pour créer un indice \"{index_choice}\" dans les conditions demandées sur l'année {year}: changez le typen d'indice voulu les paramètres de taille, de dividendes, révisez la période de tracking ou élargissez l'univers de l'indice.")
+                st.write("Actualisez la page pour revenir sur la page de création de l'univers des valeurs")
+
+            else:
+
+            
+
+                tickers_index_list=[]
+                index_choice_list=[]
+                dividend_choice_list=[]
+                for ticker in excel_tickers:
+                    added=False
+                    for year in [2018, 2019, 2020]:
+                        if year in ticker_losses[index_choice]:   
+                            if ticker in ticker_losses[index_choice][year] and (ticker not in index_choice_list and ticker not in dividend_choice_list):
+                                index_choice_list.append(ticker)
+                                added=True
+                        if year in ticker_losses['dividends']:   
+                            if ticker in ticker_losses['dividends'][year] and ( ticker not in index_choice and ticker not in dividend_choice_list):
+                                dividend_choice_list.append(ticker)
+                                added=True
+                    if not added:
+                        tickers_index_list.append(ticker)
+                st.session_state.final_tickers=tickers_index_list
+                
+            
+
+                st.write(f"L'univers de création de votre indice est de (réduit à) {len(tickers_index_list)} correspondant aux valeurs suivantes: {tickers_index_list}.")
+                st.write(f"""Les autres valeurs ont été abandonnées du fait:
+                -{len(no_data)} du fait d'absence de données: {no_data};
+                -{len(dividend_choice_list)} du fait de la politique de dividende choisie: {dividend_choice_list};
+                -{len(index_choice_list)} du fait du type d'indice choisi: {index_choice_list}""")
+                
+
+                selection_type=st.selectbox("Mode de répartition des valeurs:", ["Équipondéré", "Pondéré"])    
+
+
+                
+
+            
+                st.write("Voulez-vous un ou plusieurs benchmarks pour comparer la performance?")
+                
+                # Liste des options de types de dividendes
+                benchmarks_options = [
+                    "SPX",
+                    "SXXP",
+                    "None"
+                ]
+                selected_benchmarks = st.multiselect(
+                    "Types de dividendes",
+                    options=benchmarks_options,
+                    default="None"
+                )
+                if "None" in selected_benchmarks and len(selected_benchmarks) > 1:
+                    st.warning("Vous ne pouvez pas sélectionner 'None' avec d'autres benchmarks.")
+                    # Supprime les autres benchmarks pour ne garder que "None"
+                    selected_benchmarks = ["None"]
+
+                # Afficher la sélection
+                if selected_benchmarks:
+                    st.success(f"Benchmarks sélectionnés : {', '.join(selected_benchmarks)}")
+                else:
+                    st.warning("Veuillez sélectionner au moins une option.")
+            
+
+                st.write("Dans quelle devise souhaitez-vous les valeurs de sorties de l'indice?")
+                selected_currency=st.selectbox("Choix de la devise de sortie:", ["USD", "EUR",  "CAD", "CNY", "GBP", "JPY"])
+                
+                
+                
+                
+                if st.button("Création de l'indice"):
+                    try:
+                       #controller.tickers=st.session_state.final_tickers
+                        
+                        st.session_state.results=controller.create_index(tickers_index_list=st.session_state.final_tickers, rebalancing=rebalancing, index_size=index_size, index_choice=index_choice,  selected_benchmarks=selected_benchmarks, selected_currency=selected_currency, selection_type=selection_type)
+
+                        st.success(f"Analysez la performance de l'indice paramétré")
+                        
+                        st.session_state.page = "visual"
+                        st.success(f"Cliquez de nouveau pour continuer.")
+                                
+                                
+                    
+                    except ValueError as e:
+                        st.error(f"Erreur : {e}")
+
+
+elif st.session_state.page == "visual": 
+    resultats_indice=st.session_state.results
+
+    resultats_indice['Rendements de l\'indice'] = resultats_indice['Values'].pct_change()
     
-    if analyse_upload:
-        st.write("Les configurations d'indices disponibles sont les suivantes :")   
+    performance_totale = (resultats_indice['Values'].iloc[-1] / resultats_indice['Values'].iloc[0]) - 1
+    performance_annualisee = (1 + performance_totale) ** (365 / len(resultats_indice)) - 1
+    volatilite = resultats_indice['Index_Returns'].std() * np.sqrt(252)
+    max_drawdown = ((resultats_indice['Index'] / resultats_indice['Index'].cummax()) - 1).min()
+
+    if "SPX" in resultats_indice.columns:
+        resultats_indice['Rendement du SPX'] = resultats_indice['SPX'].pct_change()
+        beta, alpha, _, _, _ = linregress(resultats_indice['Rendement du SPX'].dropna(), resultats_indice['Rendements de l\'indice'].dropna())
+    elif "SXXP" in resultats_indice.columns:
+        resultats_indice['Rendement du SXXP'] = resultats_indice['SXXP'].pct_change()
+
+    st.title("Exemple de DataFrame avec Streamlit")
+    st.dataframe(resultats_indice)
+
+
+
+# Beta et Alpha
+beta, alpha, _, _, _ = linregress(df['Benchmark_Returns'].dropna(), df['Index_Returns'].dropna())
+
+# Ratio de Sharpe
+taux_sans_risque = 0.02  # 2% par an
+sharpe_ratio = (performance_annualisee - taux_sans_risque) / volatilite
+
+# 3. Drawdown
+df['Drawdown'] = (df['Index'] / df['Index'].cummax()) - 1
+
+# 4. Visualisations
+# Courbe de l'indice et du benchmark
+fig = go.Figure()
+fig.add_trace(go.Scatter(x=df.index, y=df['Index'], mode='lines', name='Index', line=dict(color='blue')))
+fig.add_trace(go.Scatter(x=df.index, y=df['Benchmark'], mode='lines', name='Benchmark', line=dict(color='orange')))
+fig.update_layout(title="Évolution des indices", xaxis_title="Date", yaxis_title="Valeur de l'indice")
+
+# Courbe du Drawdown
+fig_drawdown = go.Figure()
+fig_drawdown.add_trace(go.Scatter(x=df.index, y=df['Drawdown'], mode='lines', name='Drawdown', line=dict(color='red')))
+fig_drawdown.update_layout(title="Max Drawdown", xaxis_title="Date", yaxis_title="Drawdown")
+
+# Résumé des indicateurs
+indicateurs = pd.DataFrame({
+    'Indicateur': ['Performance Totale', 'Performance Annualisée', 'Volatilité', 'Max Drawdown', 'Beta', 'Alpha', 'Sharpe Ratio'],
+    'Valeur': [performance_totale, performance_annualisee, volatilite, max_drawdown, beta, alpha, sharpe_ratio]
+})
+
+# Afficher les graphiques et les indicateurs
+print(indicateurs)
+fig.show()
+fig_drawdown.show()

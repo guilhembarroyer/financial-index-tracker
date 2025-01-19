@@ -27,8 +27,8 @@ except ImportError:
 def get_historical_data(
     tickers: list[str] | str,
     research_type: str = "stock_info",
-    currency: str | None = "USD",
     source_path: str = "/Users/guilhembarroyer/Desktop/Projects/financial-index-tracker/InputFiles/data.xlsx",
+    historical_prices: bool= False,
     #show_ticker_seperation: bool = True,
     show_errors: bool = True,
     tqdm_message: str = "Obtaining historical data",
@@ -43,8 +43,8 @@ def get_historical_data(
         historical_data = get_historical_data_from_excel(
             ticker=ticker,
             research_type=research_type,
-            currency=currency,
             source_path=source_path,
+            historical_prices=historical_prices,
         )
 
         if not historical_data.empty:
@@ -90,6 +90,7 @@ def get_historical_data(
     #yf_tickers: list[str] = []
     no_data: list[str] = []
     threads = []
+    
 
     for ticker in ticker_list_iterator:
         
@@ -142,7 +143,8 @@ def get_historical_data(
     return historical_data_df, excel_tickers, no_data
 
 
-def get_historical_data_from_excel(ticker, research_type, currency, source_path):
+def get_historical_data_from_excel(ticker, research_type, source_path, historical_prices):
+
     if(source_path):
         in_excel=False
         if research_type == "stock_info" or research_type == "stock_prices":
@@ -167,15 +169,22 @@ def get_historical_data_from_excel(ticker, research_type, currency, source_path)
                 return {}
 
             if in_excel:
-                px_data_df=pd.read_excel(source_path, sheet_name=f"{index}_PX_LAST")
+                if research_type == "stock_prices" or historical_prices:
+                    px_data_df=pd.read_excel(source_path, sheet_name=f"{index}_PX_LAST")
+
                 if research_type == "stock_prices":    
+
                     px_data_results_df=pd.DataFrame(columns=["Dates", "Prices"])
-                    px_data_results_df["Dates"]=px_data_df.iloc[:,1]
-                    px_data_results_df["Prices"]=px_data_df[ticker]
-                
+                    start_date=pd.to_datetime("28-12-2018")
+                    end_date=pd.to_datetime("30-12-2020")
+                    px_data_results_df["Dates"]=px_data_df[(px_data_df.iloc[:, 1] >= start_date) & (px_data_df.iloc[:, 1] <= end_date)].iloc[:, 1]
+                    px_data_results_df["Prices"] = px_data_df[(px_data_df.iloc[:, 1] >= start_date) & (px_data_df.iloc[:, 1] <= end_date)][ticker]
+                    px_data_results_df['Prices']=px_data_results_df['Prices'].fillna(method='ffill')
+ 
+
                     return px_data_results_df
                 
-                if research_type == "stock_info" :
+                elif research_type == "stock_info" :
                     years = [2018, 2019, 2020]
                     qualitativ_data_result_df=pd.DataFrame(
                     columns=[
@@ -212,9 +221,10 @@ def get_historical_data_from_excel(ticker, research_type, currency, source_path)
 
                     qualitativ_data_result_df.loc[0, ["Name", "Bics1", "Bics2", "Bics3", "Bics4"]] = description_values
                     
-                    if not px_data_df[ticker].notna().any():
+                    if not historical_prices:
                         qualitativ_data_result_df["start_date"], qualitativ_data_result_df["end_date"]=None, None
-                    else:
+                        
+                    elif historical_prices:
                         qualitativ_data_result_df["start_date"]=px_data_df[ticker].first_valid_index()
                         qualitativ_data_result_df["end_date"]=px_data_df[ticker].last_valid_index()
                         
@@ -231,22 +241,44 @@ def get_historical_data_from_excel(ticker, research_type, currency, source_path)
                             qualitativ_data_result_df.loc[0, target_columns] = values
                     
                     return qualitativ_data_result_df
+
+        elif research_type=="currencies":
+         
+            forex_values_df=pd.DataFrame(
+            columns=[
+                "Dates",
+                "Values"
+            ],)
+
+            currencies_df = pd.read_excel(source_path, sheet_name="Forex")
+            start_date=pd.to_datetime("28-12-2018")
+            end_date=pd.to_datetime("30-12-2020")
+            forex_values_df["Dates"]=currencies_df[(currencies_df.iloc[:, 1] >= start_date) & (currencies_df.iloc[:, 1] <= end_date)].iloc[:, 1]
+            forex_values_df["Values"] = currencies_df[(currencies_df.iloc[:, 1] >= start_date) & (currencies_df.iloc[:, 1] <= end_date)][ticker]
+
+
                 
+            return  forex_values_df
+
+        
+        
+
+      
+
             
-        elif research_type == "index":
+        elif research_type=="benchmarks":
             
             index_values_df=pd.DataFrame(
             columns=[
-                "Dates",
-                "Index"
+                "Dates"
             ],)
             index_description_df = pd.read_excel(source_path, sheet_name="Index")
             index_values_df["Dates"] = index_description_df["PX_LAST"]
-            if ticker == "SPX":   
-                index_values_df["Index"] = index_description_df["SPX Index"]
+            if ticker=="SPX" :   
+                index_values_df["SPX"] = index_description_df["SPX Index"]
                 in_excel=True
-            elif ticker == "SXXP":    
-                index_values_df["Index"] = index_description_df["SXXP Index"]
+            elif ticker=="SXXP":    
+                index_values_df["SXXP"] = index_description_df["SXXP Index"]
                 in_excel=True
             else: 
                 print(f"Ticker {ticker} not found in the data file")
@@ -260,5 +292,4 @@ def get_historical_data_from_excel(ticker, research_type, currency, source_path)
         return pd.DataFrame()
         
 
-#print(get_historical_data(tickers=["AAPL UW", "1COV GY"], research_type="stock_info"))
-liste_tickers=["AAPL UW", "1COV GY", "ABC UN", "AED BB", "ROK UN", "TAP UN"]
+
