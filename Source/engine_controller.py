@@ -1,8 +1,6 @@
 """Controller Module"""
 
 import pandas as pd
-from datetime import datetime, date
-import numpy as np
 
 from data_preparation import get_historical_data as _get_historical_data
 from index_controller import Index
@@ -283,14 +281,19 @@ class Controller:
                     currency_ticker="EURUSD"
                     invert=True
 
-                elif currency!=("USD" or "EUR"):
+                elif currency!="USD" and currency!="EUR":
                     currency_convert=True
                     currency_ticker="USD"+currency
             else:
                 if currency=="USD":
                     currency_convert=True
                     currency_ticker="EURUSD"
-                elif currency!=("USD" or "EUR"):
+
+                elif currency=="EUR":
+                    currency_convert=True
+                    currency_ticker="EURUSD"
+                    
+                elif currency!="USD" and currency!="EUR":
                     currency_convert=True
                     currency_ticker="USD"+currency
             

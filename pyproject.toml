@@ -3,24 +3,43 @@ name = "financial-index-tracker"
 version = "0.1.0"
 description = "A tool to create and track financial indices."
 authors = [
-    {name = "Guilhem Barroyer",email = "guilhem.barroyer@dauphine.eu"}
+    {name = "Guilhem Barroyer", email = "guilhem.barroyer@dauphine.eu"}
 ]
 readme = "README.md"
 requires-python = ">=3.10, <3.13"
 dependencies = [
+    # Dépendances principales du projet
+    "streamlit >=1.18.0",   # Interface utilisateur avec Streamlit
+    "pandas >=2.1.0",        # Pour la gestion des données sous forme de DataFrame
+    "numpy >=1.23.0",        # Pour les calculs numériques
+    "plotly >=5.0.0",        # Pour la visualisation interactive des données
+    "scipy >=1.10.0",        # Pour les calculs statistiques (linregress, etc.)
+    "requests >=2.30.0"      # Utilisé pour les appels HTTP, si nécessaire
 ]
 
 [tool.poetry]
+# Configuration spécifique de poetry
+name = "financial-index-tracker"
+version = "0.1.0"
+description = "A tool to create and track financial indices."
 
 [tool.poetry.group.dev.dependencies]
-[tool.poetry.dependencies]
+# Dépendances pour le développement (tests, outils de développement, etc.)
+"pytest" = "^7.2"
+"black" = "^23.1"  # Outil pour formatter le code
 
+[tool.poetry.dependencies]
+# Dépendances principales utilisées dans le projet
 pandas = {version = "^2.2", extras = ["computation", "performance", "plot"]}
 requests = "^2.32.3"
 scikit-learn = "^1.5"
 yfinance = { version = "*", optional = true }
+streamlit = {version = ">=1.18.0", extras = ["beta", "components"]}
+plotly = "^5.11.0"
+numpy = "^1.25.0"
+scipy = "^1.11.0"
 
 [build-system]
+# Définir les dépendances nécessaires pour l'installation et la construction du projet
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
-

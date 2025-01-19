@@ -17,12 +17,7 @@ import time
 #except ImportError:
  #   ENABLE_YFINANCE = False
 
-try:
-    from tqdm import tqdm
 
-    ENABLE_TQDM = True
-except ImportError:
-    ENABLE_TQDM = False
 
 def get_historical_data(
     tickers: list[str] | str,
@@ -79,11 +74,7 @@ def get_historical_data(
     else:
         raise ValueError(f"Type for the tickers ({type(tickers)}) variable is invalid.")
 
-    ticker_list_iterator = (
-        tqdm(ticker_list, desc=tqdm_message)
-        if (ENABLE_TQDM & progress_bar)
-        else ticker_list
-    )
+ 
 
     historical_data_dict: dict[str, pd.DataFrame] = {}
     excel_tickers: list[str] = []
@@ -92,7 +83,7 @@ def get_historical_data(
     threads = []
     
 
-    for ticker in ticker_list_iterator:
+    for ticker in ticker_list:
         
         # Introduce a sleep timer to prevent rate limit errors
         time.sleep(0.1)

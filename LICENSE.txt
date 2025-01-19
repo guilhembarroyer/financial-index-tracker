@@ -1,0 +1,8 @@
+
+### Explications
+- Ce fichier met en avant vos choix techniques (POO, modularité, flexibilité).
+- Il guide clairement les utilisateurs dans l'installation et l'utilisation.
+- Il inclut une section sur les limites et les améliorations futures.
+
+Dites-moi si des points doivent être précisés ou ajoutés. 😊
+

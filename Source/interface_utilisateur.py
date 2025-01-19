@@ -28,7 +28,15 @@ controller = st.session_state.controller
 # Page de sélection de l'univers
 if st.session_state.page == "data":
     
-    
+    st.title("Bienvenue dans Financial Index Tracker")
+    st.write("""
+    ### Instructions pour commencer :
+    1. Configurez votre univers d'actions en important un fichier CSV.
+    2. Choisissez les critères et contraintes pour votre indice.
+    3. Lancez la création et explorez les résultats interactifs.
+
+    Pour des détails supplémentaires, consultez le fichier README.md ou contactez l'auteur.
+    """)
 
     # Titre de l'application
     st.title("Chargement de données")
@@ -167,9 +175,9 @@ elif st.session_state.page == "indice":
     
     index_type = st.selectbox(
             "Choisissez le type d'indice :",
-            options=["Indice basé sur des critères qualitatifs", "Indice basé sur les cours historiques"],
+            options=["Indice basé sur des critères qualitatifs"],
         )
-    st.write("Les indidices basés sur les cours historiques sont plus longs à calculer, ils sont ainsi limités à 30 valeurs contre 100 pour les autres.")
+    st.write("Les inices basés sur les cours historiques sont plus longs à calculer, ils sont ainsi limités à 30 valeurs contre 100 pour les autres.")
 
     if index_type == "Indice basé sur des critères qualitatifs":
         index_type="qualitative"
@@ -455,4 +463,5 @@ elif st.session_state.page == "visual":
 
   
     pass
+
 
