@@ -16,7 +16,11 @@ Le projet, bien qu'initialement conçu pour répondre à des consignes spécifiq
 
 1. **Configuration de l'indice :**
    - Définir un univers d'actions selon des critères de pays, secteurs (BICS1-4), ou indices existants.
+   ### 1. Page d'accueil
+   ![Page d'accueil](images/filtres.png)
+   ![Paramétrage de l'univers](images/selection.png)
    - Personnaliser la taille de l'indice (recommandé : moins de 15 pour limiter le temps de chargement).
+   ![Paramétrage de l'univers](images/parametrage_indice.png)
    - Spécifier des contraintes sur les valeurs (dividendes, caractéristiques qualitatives, etc.).
    - Sélectionner le type d'indice :
      - `Market Cap Index`
@@ -25,24 +29,28 @@ Le projet, bien qu'initialement conçu pour répondre à des consignes spécifiq
      - `Value Index (PB)`
      - `Value Index (PE)`
      - `Dividend Yield Index`
+   ![Analyse des contraintes relativement à l'univers donné](images/erreurs_limitations.png)
    - Activer ou désactiver les rebalancements annuels.
    - Définir la devise de l'indice et le type de pondération (équipondéré ou pondéré).
+   
 
-2. **Création de l'indice :**
+3. **Création de l'indice :**
    - Analyse préalable de la configuration pour vérifier la cohérence et la disponibilité des données.
    - Calcul dynamique des indices à partir des prix historiques et des données qualitatives fournies.
+![Création de l'indice](images/analyse_creatiob.png)
 
-3. **Visualisation et analyse :**
+4. **Visualisation et analyse :**
    - Graphiques interactifs :
      - Répartition sectorielle, par pays ou par style.
+     ![Répartition de l'indice](images/resultats_graphiques1.png)
+     ![Répartition de l'indice](images/resultats_graphiques2.png)
      - Comparaison de l'indice avec des benchmarks.
      - Évolution des indices au fil du temps.
+     ![Cours de l'indice](images/resultats_graphiques3.png)
    - Analyse des valeurs entrantes et sortantes lors des rebalancements.
+     ![Performance de l'indice](images/resultats_techniques.png)
    - Exportation facile des résultats via Streamlit (impression ou sauvegarde).
-
-4. **Support multidevise :**
-   - Conversion automatique des indices dans la devise choisie par l'utilisateur.
-
+   ![Export des résultats](images/print.png)
 ---
 
 ## Structure du projet
