@@ -55,17 +55,7 @@ Le projet, bien qu'initialement conçu pour répondre à des consignes spécifiq
 
 ## Structure du projet
 
-financial-index-tracker/ 
-├── README.md # Documentation du projet
-├── InputFiles/ # Dossier pour les fichiers d'entrée utilisateur (data.xlsx) 
-├── Source/ # Code source principal │ 
-    ├── init.py # Initialisation du module Python │ 
-    ├── data_preparation.py # Préparation et nettoyage des données │ 
-    ├── engine_controller.py# Logique métier et calcul des indices │ 
-    ├── index_controller.py # Gestion des indices (création, configuration) │ 
-    ├── interface_utilisateur.py # Interface Streamlit 
-├── pyproject.toml # Configuration du projet Python 
-└── venv/ # Environnement virtuel Python
+![Page d'accueil](images/structure.png)
 
 ## Installation et utilisation
 ```bash
