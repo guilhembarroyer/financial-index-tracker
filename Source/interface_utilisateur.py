@@ -357,7 +357,7 @@ elif st.session_state.page == "indice":
                     "None"
                 ]
                 selected_benchmarks = st.multiselect(
-                    "Types de dividendes",
+                    "Benchmarks",
                     options=benchmarks_options,
                     default="None"
                 )
