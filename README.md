@@ -55,7 +55,7 @@ Le projet, bien qu'initialement conçu pour répondre à des consignes spécifiq
 
 ## Structure du projet
 
-![Page d'accueil](images/structure.png)
+![Strcuture du dossier](images/structure.png)
 
 ## Installation et utilisation
 ```bash
